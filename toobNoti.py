@@ -3,6 +3,7 @@ from bs4 import BeautifulSoup
 import os 
 from pymongo import MongoClient
 from groupme import sendComment
+import time
 
 mongoUrl = os.getenv('battlesqueelMongoUrl')
 groupmeId = os.getenv('groupmeId')
@@ -17,6 +18,7 @@ ytCol = mongoDb['youtubeChannels']
 
 def get_latest_videos(channelId, max_results=2):
     rss_url = f'https://www.youtube.com/feeds/videos.xml?channel_id={channelId}'
+    time.sleep(4)
     feed = feedparser.parse(rss_url)
     videos = []
 
@@ -69,10 +71,10 @@ def checkChannels():
     channelDocs = ytCol.find()
 
     for channelDoc in channelDocs:
-        print(channelDoc)
+        # print(channelDoc)
         abbr = channelDoc['abbr']
 
-        updateChannel(abbr)
+        if channelDoc["toCheck"]: updateChannel(abbr)
 
 checkChannels()
 
