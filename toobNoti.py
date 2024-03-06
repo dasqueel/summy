@@ -8,8 +8,7 @@ import time
 mongoUrl = os.getenv('battlesqueelMongoUrl')
 groupmeId = os.getenv('groupmeId')
 groupmeBotId = os.getenv('groupmeBotId')
-
-# print(groupmeBotId, groupmeId)
+ngrokDomain = os.getenv("ngrokDomain")
 
 mongoClient = MongoClient(mongoUrl)
 mongoDb = mongoClient.bettor
@@ -57,15 +56,15 @@ def updateChannel(abbr):
             # summarized
             # isSummarized = summarize(vidId)
             if ytCol.update_one({"abbr": abbr}, {'$push': {'processedVidIds': vidId}}):
-                msg = f"{abbr} | https://www.youtube.com/watch?v={str(vidId)}" 
+                # msg = f"{abbr} | https://www.youtube.com/watch?v={str(vidId)}"
+                transcriptUrl = f'{ngrokDomain}/files/{vidId}.txt'
+                msg = f"{abbr} | https://www.youtube.com/watch?v={str(vidId)} | {transcriptUrl}" 
+                # msg = f"{abbr} | {readUrl}" 
                 sendComment(msg, botId=groupmeBotId, groupId=groupmeId)
             else:
                 print(f'failed to update datebase | {vidId}')
     else:
         print('no new videos')
-
-        # send url that with the findinds and transcription
-        # https://mysite.heroku.com/trans=<vidId>
 
 def checkChannels():
     channelDocs = ytCol.find()
@@ -88,9 +87,7 @@ def addChannel(abbr, name, id):
     ytCol.insert_one(channelDoc)
 
 # addChannel("g5pod", "groupoffivefocuspodcast4029", "UCwxMyHhwWGOEBrDsBz4A4ZA")
-'''
-def get_latest_processed_pubdate(processed_video_list):
-
-    return sorted(processed_video_list, key=lambda video: datetime.fromisoformat(video['publish_date'].replace('Z', '+00:00')))
-'''
+# readUrl = f'{ngrokDomain}/files/test.txt'
+# msg = f"testChannel | https://www.youtube.com/watch?v=lbFmceo4D5E | {readUrl}" 
+# sendComment(msg, botId=groupmeBotId, groupId=groupmeId)
 
