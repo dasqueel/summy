@@ -6,7 +6,7 @@ TEXT_FILES_DIR = './diarizedTranscripts'
 
 @app.route('/')
 def home():
-    return "Welcome to the Text File Reader API!"
+    return "ooo hay dare bud"
 
 @app.route('/files', methods=['GET'])
 def list_files():
@@ -20,7 +20,6 @@ def list_files():
 def read_file(filename):
     filepath = os.path.join(TEXT_FILES_DIR, filename)
     if os.path.exists(filepath) and os.path.isfile(filepath):
-        # Ensure the file is a text file
         if filepath.lower().endswith('.txt'):
             return send_from_directory(TEXT_FILES_DIR, filename, as_attachment=False, mimetype='text/plain')
         else:
@@ -29,4 +28,4 @@ def read_file(filename):
         return abort(404, description="File not found.")
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run()

@@ -7,12 +7,13 @@ hgApiKey = os.getenv("hgApiKey")
 
 device = "cuda"
 wavPath = f"./wavs/"
-audio_file = f"/root/neilbob/squeel-gpt/transcripts/wavs/{podcast}.wav"
+audio_file = f"./wavs/{podcast}.wav"
 batch_size = 16
 compute_type = "float16"
+model = "large-v2"
 
 def transcribe(podcast):
-    model = whisperx.load_model("large-v2", device, compute_type=compute_type, language="en")
+    model = whisperx.load_model(model, device, compute_type=compute_type, language="en")
     audio = whisperx.load_audio(f"{wavPath}/{podcast}.wav")
     result = model.transcribe(audio, batch_size=batch_size)
     model_a, metadata = whisperx.load_align_model(language_code=result["language"], device=device)
@@ -24,10 +25,9 @@ def transcribe(podcast):
 
     result = whisperx.assign_word_speakers(diarize_segments, result)
     # print(diarize_segments)
-    # print(result["segments"]) # segments are now assigned speaker IDs
+    # print(result["segments"])
     data_segments = result["segments"]
 
-    # Initialize variables
     final_transcript = ""
     current_speaker = None
 
@@ -36,7 +36,6 @@ def transcribe(podcast):
         text = segment['text']
         
         if speaker != current_speaker:
-            # If this is not the first segment, add a newline to separate from the previous speaker's text
             if current_speaker is not None:
                 final_transcript += "\n\n"
             current_speaker = speaker
