@@ -1,9 +1,12 @@
 import feedparser
-from bs4 import BeautifulSoup
 import os 
 from pymongo import MongoClient
 from groupme import sendComment
 import time
+import subprocess
+from summarizers import *
+from transcribers import *
+from whisx import transcribe
 
 mongoUrl = os.getenv('battlesqueelMongoUrl')
 groupmeId = os.getenv('groupmeId')
@@ -14,6 +17,32 @@ mongoClient = MongoClient(mongoUrl)
 mongoDb = mongoClient.bettor
 vidsCol = mongoDb['vids']
 ytCol = mongoDb['youtubeChannels']
+
+def dbUpdateAndMessage(podcastAbbr, vidId):
+    if ytCol.update_one({"abbr": podcastAbbr}, {'$push': {'processedVidIds': vidId}}):
+        transcriptUrl = f'{ngrokDomain}/files/{vidId}.txt'
+        msg = f"{podcastAbbr} | https://www.youtube.com/watch?v=lbFmceo4D5E | {transcriptUrl}" 
+        sendComment(msg, botId=groupmeBotId, groupId=groupmeId)
+    else:
+        print(f'failed to update datebase | {vidId}')
+
+def downloadPod(pod_title, url):
+    output_template = f"./wavs/{pod_title}.wav"
+    
+    command = [
+        "yt-dlp",
+        "--extract-audio",
+        "--audio-format", "wav",
+        "--postprocessor-args", "-ar 16000",
+        "-o", output_template,
+        url
+    ]
+    
+    try:
+        subprocess.run(command, check=True)
+        print(f"Downloaded and converted audio successfully saved to {output_template}")
+    except subprocess.CalledProcessError as e:
+        print(f"An error occurred: {e}")
 
 def get_latest_videos(channelId, max_results=2):
     rss_url = f'https://www.youtube.com/feeds/videos.xml?channel_id={channelId}'
@@ -33,7 +62,6 @@ def get_latest_videos(channelId, max_results=2):
     return videos
 
 def has_new_video(abbr):
-    # check from the store that a new video id isnt in the already processed videos
     channelDoc = ytCol.find_one({"abbr":abbr})
     processed_video_ids = channelDoc["processedVidIds"]
     
@@ -47,7 +75,6 @@ def has_new_video(abbr):
 
 def updateChannel(abbr):
     has_new_videos = has_new_video(abbr)
-    # print(has_new_video)
     if len(has_new_videos) > 0:
         for vidId in has_new_videos:
             # transcribe
@@ -74,20 +101,36 @@ def checkChannels():
         abbr = channelDoc['abbr']
 
         if channelDoc["toCheck"]: updateChannel(abbr)
+        
+def updateChannelsSync(podcast):
+    try:
+        downloadPodResult = downloadPod(podcast)
+        transcribeResult = transcribe(podcast)
+        print(transcribeResult)
+        summaryResult = summarize(podcast)
+        print(summaryResult)
+        dbUpdateAndMessageResult = dbUpdateAndMessage(podcast)
+        print(dbUpdateAndMessageResult)
+    except Exception as e:
+        print(f"An error occurred: {e}")
+    finally:
+        print("Cleanup can go here")
 
-checkChannels()
+async def updateChannelsAsync(podcast):
+    try:
+        downloadPodResult = await downloadPod(podcast)
+        transcribeResult = await transcribe(podcast)
+        print(transcribeResult)
+        summaryResult = await summarize(podcast)
+        print(summaryResult)
+        dbUpdateAndMessageResult = await dbUpdateAndMessage(podcast)
+        print(dbUpdateAndMessageResult)
+    except Exception as e:
+        print(f"An error occurred: {e}")
+    finally:
+        print("Cleanup can go here")
 
-def addChannel(abbr, name, id):
-    channelDoc = {
-        "abbr": abbr,
-        "name": name,
-        "id": id,
-        "processedVidIds": []
-    }
-    ytCol.insert_one(channelDoc)
-
-# addChannel("g5pod", "groupoffivefocuspodcast4029", "UCwxMyHhwWGOEBrDsBz4A4ZA")
-# readUrl = f'{ngrokDomain}/files/test.txt'
-# msg = f"testChannel | https://www.youtube.com/watch?v=lbFmceo4D5E | {readUrl}" 
+# readTransUrl = f'{ngrokDomain}/files/test.txt'
+# msg = f"testChannel | https://www.youtube.com/watch?v=lbFmceo4D5E | {readTransUrl}" 
 # sendComment(msg, botId=groupmeBotId, groupId=groupmeId)
 

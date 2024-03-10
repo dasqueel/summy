@@ -1,0 +1,2 @@
+def summarize():
+    print('ok')
